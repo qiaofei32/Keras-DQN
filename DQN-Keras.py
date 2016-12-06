@@ -6,6 +6,7 @@ from keras.layers import *
 from keras.optimizers import *
 from keras.models import Sequential
 from keras.callbacks import ModelCheckpoint
+import argparse
 
 class DQN_CartPole():
 	'''DQN To Play CartPole-v0'''
@@ -13,10 +14,10 @@ class DQN_CartPole():
 	def __init__(self):
 		'''initialize'''
 
-		self.EXPLORE_SIZE = 500 * 2
-		self.MEMORY_SIZE  = 500 * 2
-		self.TRAIN_FRAMES = 500 * 10
-		self.BATCH_SIZE   = 50  * 2
+		self.EXPLORE_SIZE = 500 * 1
+		self.MEMORY_SIZE  = 500 * 1
+		self.TRAIN_FRAMES = 500 * 2
+		self.BATCH_SIZE   = 50  * 1
 		self.EPSILON	  = 1.0
 		self.INIT_EPSILON = 1.0
 
@@ -39,13 +40,15 @@ class DQN_CartPole():
 		'''create keras model'''
 
 		model = Sequential()
-		model.add(Dense(output_dim=32, input_shape=(self.NUM_INPUT,)))
-		model.add(Dense(16))
+		model.add(Dense(output_dim=128, input_shape=(self.NUM_INPUT,)))
+		model.add(Dense(64, activation='relu'))
+		model.add(Dense(64, activation='relu'))
 		model.add(Dense(self.NB_ACTIONS))
-		# model.add(Activation("softmax"))
 		# model.add(Activation("linear"))
 		# model.compile(RMSprop(), 'MSE')
-		model.compile('sgd', 'MSE')
+		# model.compile('sgd', 'MSE')
+		model.add(Activation("softmax"))
+		model.compile('sgd', 'categorical_crossentropy')
 		return model
 
 	def process_minibatch(self, minibatch):
@@ -59,7 +62,7 @@ class DQN_CartPole():
 			old_state_m, action_m, reward_m, new_state_m, done = memory
 
 			# Get prediction on old state.
-			old_qval = self.model.predict( numpy.array([old_state_m]), batch_size=1)
+			old_qval = self.model.predict(numpy.array([old_state_m]), batch_size=1)
 			# print old_qval
 
 			# Get prediction on new state.
@@ -105,29 +108,31 @@ class DQN_CartPole():
 				state = self.env.reset()
 				win_cnt = 0
 				while not done:
+					state_input = state
 					# Choose an action.
 					# if random.random() <= self.EPSILON:
-					# if random.random() <= self.EPSILON or epoch < self.EXPLORE_SIZE:
 					if numpy.random.rand() <= self.EPSILON or epoch < self.EXPLORE_SIZE:
 						action = numpy.random.randint(0, self.NB_ACTIONS)
 					else:
-						qval = self.model.predict(numpy.array([state]), batch_size=1)
+						qval = self.model.predict(numpy.array([state_input]), batch_size=1)
 						action = numpy.argmax(qval[0])  # best action
 
 					# Take action, observe new state and get reward.
-					new_state, reward, done, _ = self.env.step(action)
+					state, reward, done, _ = self.env.step(action)
 					reward = -1.0 if done else +1.0
 					if not done:
 						win_cnt += 1
 
 					# Experience replay storage.
-					self.MEMORY.append((state, action, reward, new_state, done))
+					self.MEMORY.append((state_input, action, reward, state, done))
 					if len(self.MEMORY) > self.MEMORY_SIZE:
 						self.MEMORY.pop(0)
 
-					if len(self.MEMORY) >= self.BATCH_SIZE and epoch >= self.EXPLORE_SIZE:
+					# if len(self.MEMORY) >= self.BATCH_SIZE and epoch >= self.EXPLORE_SIZE:
+					if len(self.MEMORY):
 						# Randomly sample our experience replay memory
-						minibatch = random.sample(self.MEMORY, self.BATCH_SIZE)
+						# minibatch = random.sample(self.MEMORY, self.BATCH_SIZE)
+						minibatch = random.sample(self.MEMORY, min(self.BATCH_SIZE, len(self.MEMORY)))
 
 						# Get training values.
 						X_train, Y_train = self.process_minibatch(minibatch)
@@ -148,7 +153,7 @@ class DQN_CartPole():
 						loss += self.model.train_on_batch(X_train, Y_train)
 
 					# Update the starting state with S'.
-					state = new_state
+					# state_input = new_state
 
 				print("Win: %-5d | Loss: %.5f at %-5d | epsilon %f" % (win_cnt, loss, epoch+1, self.EPSILON))
 
@@ -191,11 +196,16 @@ class DQN_CartPole():
 
 
 if __name__ == "__main__":
+	parser = argparse.ArgumentParser()
+	parser.add_argument("func", default="train")
+	args = parser.parse_args()
 
 	game = DQN_CartPole()
 
-	# game.train_model()
-	game.test_model()
+	if args.func == "train":
+		game.train_model()
+	else:
+		game.test_model()
 
 
 
