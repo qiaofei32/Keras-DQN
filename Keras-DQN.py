@@ -21,7 +21,7 @@ class DQN_CartPole():
 		self.EPSILON	  = 1.0
 		self.INIT_EPSILON = 1.0
 
-		self.GAMMA 		  = 0.9
+		self.GAMMA        = 0.9
 		self.TEST_SIZE	  = 100
 		self.STEP_SIZE	  = 300
 		self.NB_ACTIONS	  = 2
