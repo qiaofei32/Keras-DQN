@@ -29,7 +29,9 @@ class DQN_CartPole():
 		self.NUM_INPUT	  = 4
 		self.MIN_EPSILON  = 0.01
 		self.TRAINED_SIZE = 0
-		self.MEMORY       = [] #stores tuples of (S, A, R, S').
+		self.MEMORY       = []
+		# tuples of (State, Action, Reward, NewState, Done)
+
 		self.env   = gym.make('CartPole-v0')
 		self.model = self.create_model()
 
